@@ -1,55 +1,40 @@
-<!DOCTYPE html>
-<html lang="zh-HK">
-<head>
-  <meta charset="UTF-8">
-  <title>AR Marker Video Floating</title>
-  <script src="https://cdn.jsdelivr.net/npm/aframe@1.4.2/dist/aframe.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-aframe.prod.js"></script>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-aframe.prod.css" />
-
-  <!-- Plyr -->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/plyr@3.8.10/dist/plyr.css" />
-  <script src="https://cdn.jsdelivr.net/npm/plyr@3.8.10/dist/plyr.min.js"></script>
-</head>
-<body>
-
 <a-scene mindar-image="imageTargetSrc: travel-target.mind; autoStart: true"
-         vr-mode-ui="enabled:false"
-         device-orientation-permission-ui="enabled:true"
+         vr-mode-ui="enabled: false" 
+         device-orientation-permission-ui="enabled: true"
          embedded>
 
+  <a-camera position="0 0 0" look-controls="enabled:false"></a-camera>
+
   <a-assets>
-    <video id="myVideo" playsinline crossorigin="anonymous" loop muted></video>
+    <video id="myVideo" src="Comp.mp4" loop playsinline crossorigin="anonymous" style="display:none"></video>
   </a-assets>
 
-  <!-- Marker -->
-  <a-entity mindar-image-target="targetIndex:0" id="video-marker">
-    <a-plane id="videoPlane" width="1.6" height="0.9" position="0 0 0" rotation="0 0 0" material="shader: flat; src: #myVideo"></a-plane>
+  <!-- Marker + AR 浮動影片 -->
+  <a-entity mindar-image-target="targetIndex:0" id="marker-0">
+    <a-plane id="videoPlane" width="1.6" height="0.9" position="0 0 0.1"></a-plane>
   </a-entity>
 
-  <a-camera position="0 0 0" look-controls="enabled:false"></a-camera>
 </a-scene>
+
+<script src="https://cdn.jsdelivr.net/npm/plyr@3.7.8/dist/plyr.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/plyr@3.7.8/dist/plyr.css" />
 
 <script>
 const videoEl = document.getElementById("myVideo");
-videoEl.src = "Comp.mp4";
 
-// 初始化 Plyr（可保留控制器，或隱藏）
-const player = new Plyr(videoEl, {
-  controls: ['play', 'progress', 'mute'],
-  autoplay: false,
-  loop: { active: true }
+// Plyr 初始化（無控制條）
+const player = new Plyr(videoEl, { controls: [] });
+
+// 將影片貼到 AR marker 上
+const planeEl = document.getElementById("videoPlane");
+const videoTexture = new THREE.VideoTexture(videoEl);
+planeEl.addEventListener('model-loaded', ()=>{
+  planeEl.getObject3D('mesh').material.map = videoTexture;
+  planeEl.getObject3D('mesh').material.needsUpdate = true;
 });
 
-// Marker 偵測事件
-const markerEl = document.getElementById("video-marker");
-markerEl.addEventListener("targetFound", () => {
-  player.play();
-});
-markerEl.addEventListener("targetLost", () => {
-  player.pause();
-});
+// Marker 控制播放
+const marker = document.getElementById("marker-0");
+marker.addEventListener("targetFound", ()=>{ player.play(); });
+marker.addEventListener("targetLost", ()=>{ player.pause(); });
 </script>
-
-</body>
-</html>
