@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+  <meta charset="UTF-8">
+  <title>TV AR Video Demo</title>
+  <script src="https://cdn.jsdelivr.net/npm/aframe@1.4.2/dist/aframe.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-aframe.prod.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-aframe.prod.css" />
+  <style>
+    body, html {
+      margin: 0; padding: 0;
+      height: 100%; overflow: hidden;
+      background-color: black;
+    }
+    #home-btn {
+      position: fixed;
+      top: 15px; left: 15px;
+      background: rgba(0,0,0,0.6);
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 50px; height: 50px;
+      font-size: 22px;
+      cursor: pointer;
+      z-index: 9999;
+    }
+  </style>
+</head>
+<body>
+
+<!-- Home 按鈕 -->
+<button id="home-btn" onclick="goHome()">🏠</button>
+
+<!-- AR 場景 -->
+<a-scene mindar-image="imageTargetSrc: travel-target.mind; autoStart: true"
+         vr-mode-ui="enabled: false"
+         device-orientation-permission-ui="enabled: true"
+         embedded>
+  
+  <a-assets>
+    <!-- 電視機模型 -->
+    <a-asset-item id="tvModel" src="checkpiont3.fbx"></a-asset-item>
+
+    <!-- 播放影片 -->
+    <video id="tvVideo" src="Comp.mp4" preload="auto" loop="true" crossorigin="anonymous" playsinline></video>
+  </a-assets>
+
+  <!-- Marker + 電視機模型 -->
+  <a-entity mindar-image-target="targetIndex: 0" id="tv-marker">
+    <a-gltf-model id="tv" src="#tvModel" scale="1 1 1" position="0 0 0"></a-gltf-model>
+  </a-entity>
+
+  <a-camera position="0 0 0" look-controls="enabled:false"></a-camera>
+</a-scene>
+
+<script>
+function goHome() {
+  window.location.href = "https://starlightar.webflow.io/";
+}
+
+const videoEl = document.getElementById("tvVideo");
+const tvModel = document.getElementById("tv");
+
+// 當電視模型載入完成後，設定 Video Texture
+tvModel.addEventListener("model-loaded", () => {
+  const mesh = tvModel.getObject3D("mesh");
+  mesh.traverse((node) => {
+    // ⚠️ 根據你模型螢幕的名稱改呢度，例如 "Screen"、"Plane"、"TV_Screen" ...
+    if (node.name === "Screen") {
+      const texture = new THREE.VideoTexture(videoEl);
+      node.material.map = texture;
+      node.material.needsUpdate = true;
+      console.log("✅ Video texture 已套用到螢幕。");
+    }
+  });
+});
+
+// Marker 出現時播放影片
+const markerEl = document.getElementById("tv-marker");
+markerEl.addEventListener("targetFound", () => {
+  console.log("🎥 Marker Found → 播放影片");
+  videoEl.play();
+});
+
+// Marker 消失時暫停影片
+markerEl.addEventListener("targetLost", () => {
+  console.log("⏸ Marker Lost → 暫停影片");
+  videoEl.pause();
+});
+</script>
+
+</body>
+</html>
