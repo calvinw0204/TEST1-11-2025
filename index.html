@@ -2,7 +2,7 @@
 <html lang="zh-HK">
 <head>
   <meta charset="UTF-8">
-  <title>TV AR Video Demo with Plyr.js</title>
+  <title>AR Video with Plyr.js</title>
   <script src="https://cdn.jsdelivr.net/npm/aframe@1.4.2/dist/aframe.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-aframe.prod.js"></script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-aframe.prod.css" />
@@ -12,27 +12,16 @@
   <script src="https://cdn.jsdelivr.net/npm/plyr@3.8.10/dist/plyr.min.js"></script>
 
   <style>
-    body, html {
-      margin:0; padding:0;
-      height:100%; overflow:hidden;
-      background: transparent;
-    }
+    body, html { margin:0; padding:0; height:100%; overflow:hidden; background:black; }
     #home-btn {
-      position: fixed;
-      top: 15px; left: 15px;
-      background: rgba(0,0,0,0.6);
-      color: white;
-      border: none;
-      border-radius: 50%;
-      width: 50px; height: 50px;
-      font-size: 22px;
-      cursor: pointer;
-      z-index: 9999;
+      position: fixed; top:15px; left:15px;
+      background: rgba(0,0,0,0.6); color:white;
+      border:none; border-radius:50%;
+      width:50px; height:50px; font-size:22px;
+      cursor:pointer; z-index:9999;
     }
-    /* Plyr hidden, 由 A-Frame texture 播 */
-    #tvVideo {
-      display:none;
-    }
+    /* 隱藏原始 video */
+    #myVideo { display:none; }
   </style>
 </head>
 <body>
@@ -43,47 +32,33 @@
          vr-mode-ui="enabled:false"
          device-orientation-permission-ui="enabled:true"
          embedded>
-  
+
   <a-assets>
-    <a-asset-item id="tvModel" src="checkpiont3.glb"></a-asset-item>
-    <video id="tvVideo" playsinline crossorigin="anonymous" loop></video>
+    <video id="myVideo" playsinline crossorigin="anonymous" loop></video>
   </a-assets>
 
-  <a-entity mindar-image-target="targetIndex:0" id="tv-marker">
-    <a-gltf-model id="tv" src="#tvModel" scale="0.8 0.8 0.8" position="0 0 0.5"></a-gltf-model>
+  <!-- Marker -->
+  <a-entity mindar-image-target="targetIndex:0" id="video-marker">
+    <!-- 影片會直接用 Plyr 播 -->
   </a-entity>
 
   <a-camera position="0 0 0" look-controls="enabled:false"></a-camera>
 </a-scene>
 
 <script>
-const videoEl = document.getElementById("tvVideo");
-videoEl.src = "Comp.mp4";  // Plyr 播放的影片 URL
+const videoEl = document.getElementById("myVideo");
+videoEl.src = "Comp.mp4";
 
 // 初始化 Plyr
 const player = new Plyr(videoEl, {
-  controls: [], // 隱藏 UI
+  controls: ['play', 'progress', 'mute'], 
   autoplay: false,
   loop: { active: true }
 });
 
-// 將 Video 套用到電視螢幕
-const tvModel = document.getElementById("tv");
-tvModel.addEventListener("model-loaded", () => {
-  const mesh = tvModel.getObject3D("mesh");
-  if (!mesh) return;
-  mesh.traverse((node) => {
-    if (node.name === "Screen") { // 你模型螢幕名字
-      node.material.map = new THREE.VideoTexture(videoEl);
-      node.material.needsUpdate = true;
-      console.log("✅ VideoTexture 已套用到 TV 螢幕");
-    }
-  });
-});
-
 // Marker 偵測事件
-const markerEl = document.getElementById("tv-marker");
-markerEl.addEventListener("targetFound", () => { 
+const markerEl = document.getElementById("video-marker");
+markerEl.addEventListener("targetFound", () => {
   console.log("🎥 Marker Found → 播放影片");
   player.play();
 });
