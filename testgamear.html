@@ -1,167 +1,123 @@
-<!DOCTYPE html>
-<html lang="zh-HK">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>光影挑戰 | AR版</title>
-  <script src="https://cdn.jsdelivr.net/npm/aframe@1.4.2/dist/aframe.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-aframe.prod.js"></script>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-aframe.prod.css" />
-  <style>
-    html, body, a-scene {
-      margin: 0;
-      padding: 0;
-      width: 100%;
-      height: 100%;
-      background: transparent; /* 去掉白色背景 */
-    }
+<a-scene mindar-image="imageTargetSrc: travel-target.mind; autoStart: true;" embedded>
+  <a-camera position="0 0 0"></a-camera>
+</a-scene>
 
-    #ui {
-      position: fixed;
-      top: 10px;
-      width: 100%;
-      z-index: 9999;
-      font-size: 20px;
-      color: white;
-      text-align: center;
-      display: none; /* 初始隱藏，掃到 marker 才顯示 */
-    }
-
-    canvas {
-      display: block;
-      background: transparent;
-    }
-  </style>
-</head>
-<body>
-
-<div id="ui">
+<div id="ui" style="display:none;">
   <span id="score">分數：0</span>
   <span id="timer">時間：30</span>
 </div>
-
-<a-scene mindar-image="imageTargetSrc: travel-target.mind; autoStart: true"
-         embedded
-         vr-mode-ui="enabled:false"
-         device-orientation-permission-ui="enabled:true"
-         renderer="alpha:true; colorManagement:true">
-
-  <a-camera position="0 0 0" look-controls="enabled:false"></a-camera>
-
-  <!-- marker，掃到才開始遊戲 -->
-  <a-entity mindar-image-target="targetIndex:0" id="ar-game-marker">
-    <!-- 可以放 3D model 或 a-plane，如果只做 UI 就不放東西 -->
-  </a-entity>
-
-</a-scene>
+<canvas id="gameCanvas" width="400" height="600" style="display:none;"></canvas>
 
 <script>
-const marker = document.getElementById("ar-game-marker");
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
 const ui = document.getElementById("ui");
 const scoreEl = document.getElementById("score");
 const timerEl = document.getElementById("timer");
 
 const realMovies = ["無間道", "花樣年華", "甜蜜蜜", "重慶森林", "功夫", "英雄本色"];
 const fakeMovies = ["夢幻追擊", "光影密碼", "午夜之塔", "銀河風暴", "藍天行動"];
-const stars = [];
-
+let stars = [];
 let score = 0;
 let timeLeft = 30;
 let gameRunning = false;
-let spawnInterval, countdownTimer;
+let spawnTimeout = null;
+let countdownInterval = null;
 
-// 隨機生成電影文字
+// 隨機生成星星
 function randomMovie() {
   const isReal = Math.random() > 0.5;
   const name = isReal
     ? realMovies[Math.floor(Math.random() * realMovies.length)]
     : fakeMovies[Math.floor(Math.random() * fakeMovies.length)];
-  const x = Math.random() * (window.innerWidth - 100) + 20;
+  const x = Math.random() * (canvas.width - 100) + 20;
   const color = isReal ? "#FFD700" : "#FF69B4";
   stars.push({ name, x, y: 0, speed: Math.random() * 2 + 1.5, isReal, color });
 }
 
-// 畫電影文字
+// 畫面更新
 function draw() {
-  const canvas = document.createElement("canvas");
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-  canvas.style.position = "absolute";
-  canvas.style.top = "0";
-  canvas.style.left = "0";
-  canvas.style.pointerEvents = "none"; // 不阻擋 AR
-  canvas.style.zIndex = "1000";
-  document.body.appendChild(canvas);
-  const ctx = canvas.getContext("2d");
-
-  function loop() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.font = "24px Noto Sans TC";
-    stars.forEach(star => {
-      ctx.fillStyle = star.color;
-      ctx.fillText(star.name, star.x, star.y);
-      star.y += star.speed;
-    });
-    for (let i = stars.length - 1; i >= 0; i--) {
-      if (stars[i].y > canvas.height + 20) stars.splice(i, 1);
-    }
-    if (gameRunning) requestAnimationFrame(loop);
-  }
-
-  loop();
-
-  canvas.addEventListener("click", (e) => {
-    const x = e.clientX;
-    const y = e.clientY;
-    for (let i = stars.length - 1; i >= 0; i--) {
-      const star = stars[i];
-      const textWidth = ctx.measureText(star.name).width;
-      const textHeight = 24;
-      const padding = 5;
-      if (x > star.x - padding && x < star.x + textWidth + padding &&
-          y > star.y - textHeight - padding && y < star.y + padding) {
-        if (star.isReal) score += 10;
-        else score -= 5;
-        scoreEl.textContent = `分數：${score}`;
-        stars.splice(i,1);
-        break;
-      }
-    }
+  if(!gameRunning) return;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.font = "20px Noto Sans TC";
+  stars.forEach(star => {
+    ctx.fillStyle = star.color;
+    ctx.fillText(star.name, star.x, star.y);
+    star.y += star.speed;
   });
+  // 移除落到畫面外的星星
+  for (let i = stars.length - 1; i >= 0; i--) {
+    if (stars[i].y > canvas.height + 20) stars.splice(i, 1);
+  }
+  requestAnimationFrame(draw);
 }
 
-// 遊戲開始
-function startGame() {
-  if (gameRunning) return;
-  gameRunning = true;
-  ui.style.display = "block";
-  draw();
-  spawnInterval = setInterval(randomMovie, 800);
-  countdownTimer = setInterval(() => {
+// 生成星星 loop
+function spawnLoop() {
+  if(!gameRunning) return;
+  randomMovie();
+  spawnTimeout = setTimeout(spawnLoop, 800);
+}
+
+// 計時器
+function countdown() {
+  countdownInterval = setInterval(() => {
     timeLeft--;
     timerEl.textContent = `時間：${timeLeft}`;
-    if (timeLeft <= 0) endGame();
+    if(timeLeft <= 0) stopGame();
   }, 1000);
 }
 
-// 遊戲結束
-function endGame() {
-  clearInterval(spawnInterval);
-  clearInterval(countdownTimer);
-  gameRunning = false;
-  alert(`遊戲結束！你嘅分數係 ${score} 🎉`);
+// 開始遊戲
+function startGame() {
+  if(gameRunning) return;
+  score = 0;
+  timeLeft = 30;
+  stars = [];
+  scoreEl.textContent = `分數：${score}`;
+  timerEl.textContent = `時間：${timeLeft}`;
+  gameRunning = true;
+  ui.style.display = "block";
+  canvas.style.display = "block";
+  draw();
+  spawnLoop();
+  countdown();
 }
 
-// marker 事件
-marker.addEventListener("targetFound", () => {
-  startGame();
+// 停止遊戲 / 離開 marker
+function stopGame() {
+  gameRunning = false;
+  ui.style.display = "none";
+  canvas.style.display = "none";
+  stars = [];
+  clearTimeout(spawnTimeout);
+  clearInterval(countdownInterval);
+}
+
+// click 判定文字
+window.addEventListener("click", (e) => {
+  if(!gameRunning) return;
+  const x = e.clientX - canvas.getBoundingClientRect().left;
+  const y = e.clientY - canvas.getBoundingClientRect().top;
+
+  for (let i = stars.length - 1; i >= 0; i--) {
+    const star = stars[i];
+    const textWidth = ctx.measureText(star.name).width;
+    const textHeight = 24;
+    const padding = 5;
+    if(x > star.x - padding && x < star.x + textWidth + padding &&
+       y > star.y - textHeight - padding && y < star.y + padding) {
+      if(star.isReal) score += 10;
+      else score -= 5;
+      scoreEl.textContent = `分數：${score}`;
+      stars.splice(i,1);
+      break;
+    }
+  }
 });
 
-marker.addEventListener("targetLost", () => {
-  // 可選：暫停遊戲或隱藏 UI
-  // ui.style.display = "none";
-});
+// 偵測 marker
+const markerEl = document.querySelector("#checkpoint-0"); // 你 marker ID
+markerEl.addEventListener("targetFound", startGame);
+markerEl.addEventListener("targetLost", stopGame);
 </script>
-
-</body>
-</html>
