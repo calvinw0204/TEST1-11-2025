@@ -1,30 +1,71 @@
-<a-scene mindar-image="imageTargetSrc: travel-target.mind; autoStart: true;" embedded>
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>光影挑戰 | AR 版</title>
+
+<script src="https://cdn.jsdelivr.net/npm/aframe@1.4.2/dist/aframe.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-aframe.prod.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-aframe.prod.css" />
+
+<style>
+html, body { margin:0; padding:0; height:100%; background:transparent; overflow:hidden; }
+#gameCanvas { 
+  position:absolute; top:0; left:0; display:none; 
+  background:transparent; 
+  z-index:10; 
+}
+#ui {
+  position: absolute; top: 10px; width: 100%; z-index: 11; font-size: 20px;
+  display:none;
+  text-align: center;
+  color: white;
+  pointer-events: none;
+}
+#score, #timer { margin: 0 15px; display: inline-block; }
+</style>
+</head>
+
+<body>
+
+<!-- AR Scene -->
+<a-scene mindar-image="imageTargetSrc: travel-target.mind; autoStart: true;"
+         embedded
+         vr-mode-ui="enabled: false"
+         renderer="alpha: true"
+         background="color: transparent">
   <a-camera position="0 0 0"></a-camera>
+
+  <!-- marker 0 用嚟觸發遊戲 -->
+  <a-entity mindar-image-target="targetIndex:0" id="game-marker"></a-entity>
 </a-scene>
 
-<div id="ui" style="display:none;">
+<!-- UI -->
+<div id="ui">
   <span id="score">分數：0</span>
   <span id="timer">時間：30</span>
 </div>
-<canvas id="gameCanvas" width="400" height="600" style="display:none;"></canvas>
+
+<!-- canvas -->
+<canvas id="gameCanvas" width="400" height="600"></canvas>
 
 <script>
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 const ui = document.getElementById("ui");
-const scoreEl = document.getElementById("score");
-const timerEl = document.getElementById("timer");
 
 const realMovies = ["無間道", "花樣年華", "甜蜜蜜", "重慶森林", "功夫", "英雄本色"];
 const fakeMovies = ["夢幻追擊", "光影密碼", "午夜之塔", "銀河風暴", "藍天行動"];
 let stars = [];
+
 let score = 0;
 let timeLeft = 30;
 let gameRunning = false;
-let spawnTimeout = null;
+let spawnInterval = null;
 let countdownInterval = null;
 
-// 隨機生成星星
+// 隨機生成電影名字
 function randomMovie() {
   const isReal = Math.random() > 0.5;
   const name = isReal
@@ -35,89 +76,80 @@ function randomMovie() {
   stars.push({ name, x, y: 0, speed: Math.random() * 2 + 1.5, isReal, color });
 }
 
-// 畫面更新
+// 繪製星星
 function draw() {
-  if(!gameRunning) return;
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.clearRect(0,0,canvas.width,canvas.height);
   ctx.font = "20px Noto Sans TC";
-  stars.forEach(star => {
+  stars.forEach(star=>{
     ctx.fillStyle = star.color;
     ctx.fillText(star.name, star.x, star.y);
     star.y += star.speed;
   });
-  // 移除落到畫面外的星星
-  for (let i = stars.length - 1; i >= 0; i--) {
-    if (stars[i].y > canvas.height + 20) stars.splice(i, 1);
-  }
-  requestAnimationFrame(draw);
+  // 移除落出畫面
+  stars = stars.filter(s => s.y <= canvas.height + 20);
+  if(gameRunning) requestAnimationFrame(draw);
 }
 
-// 生成星星 loop
-function spawnLoop() {
-  if(!gameRunning) return;
-  randomMovie();
-  spawnTimeout = setTimeout(spawnLoop, 800);
-}
-
-// 計時器
-function countdown() {
-  countdownInterval = setInterval(() => {
-    timeLeft--;
-    timerEl.textContent = `時間：${timeLeft}`;
-    if(timeLeft <= 0) stopGame();
-  }, 1000);
-}
-
-// 開始遊戲
-function startGame() {
-  if(gameRunning) return;
-  score = 0;
-  timeLeft = 30;
-  stars = [];
-  scoreEl.textContent = `分數：${score}`;
-  timerEl.textContent = `時間：${timeLeft}`;
-  gameRunning = true;
-  ui.style.display = "block";
-  canvas.style.display = "block";
-  draw();
-  spawnLoop();
-  countdown();
-}
-
-// 停止遊戲 / 離開 marker
-function stopGame() {
-  gameRunning = false;
-  ui.style.display = "none";
-  canvas.style.display = "none";
-  stars = [];
-  clearTimeout(spawnTimeout);
-  clearInterval(countdownInterval);
-}
-
-// click 判定文字
-window.addEventListener("click", (e) => {
-  if(!gameRunning) return;
-  const x = e.clientX - canvas.getBoundingClientRect().left;
-  const y = e.clientY - canvas.getBoundingClientRect().top;
-
-  for (let i = stars.length - 1; i >= 0; i--) {
+// 點擊判定
+canvas.addEventListener("click", e=>{
+  const rect = canvas.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const y = e.clientY - rect.top;
+  for(let i=stars.length-1;i>=0;i--){
     const star = stars[i];
     const textWidth = ctx.measureText(star.name).width;
     const textHeight = 24;
     const padding = 5;
     if(x > star.x - padding && x < star.x + textWidth + padding &&
-       y > star.y - textHeight - padding && y < star.y + padding) {
-      if(star.isReal) score += 10;
-      else score -= 5;
-      scoreEl.textContent = `分數：${score}`;
+       y > star.y - textHeight - padding && y < star.y + padding){
+      score += star.isReal ? 10 : -5;
+      document.getElementById("score").textContent = `分數：${score}`;
       stars.splice(i,1);
       break;
     }
   }
 });
 
-// 偵測 marker
-const markerEl = document.querySelector("#checkpoint-0"); // 你 marker ID
+// 開始遊戲
+function startGame(){
+  if(gameRunning) return;
+  gameRunning = true;
+  stars = [];
+  score = 0;
+  timeLeft = 30;
+  document.getElementById("score").textContent = `分數：${score}`;
+  document.getElementById("timer").textContent = `時間：${timeLeft}`;
+  canvas.style.display = "block";
+  ui.style.display = "block";
+  draw();
+
+  spawnInterval = setInterval(randomMovie, 800);
+  countdownInterval = setInterval(()=>{
+    timeLeft--;
+    document.getElementById("timer").textContent = `時間：${timeLeft}`;
+    if(timeLeft<=0){
+      stopGame();
+      alert(`遊戲結束！你嘅分數係 ${score} 🎉`);
+    }
+  },1000);
+}
+
+// 停止並重置遊戲
+function stopGame(){
+  gameRunning = false;
+  canvas.style.display = "none";
+  ui.style.display = "none";
+  stars = [];
+  clearInterval(spawnInterval);
+  clearInterval(countdownInterval);
+}
+
+// Marker 事件
+const markerEl = document.getElementById("game-marker");
 markerEl.addEventListener("targetFound", startGame);
 markerEl.addEventListener("targetLost", stopGame);
+
 </script>
+
+</body>
+</html>
