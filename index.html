@@ -2,7 +2,7 @@
 <html lang="zh-HK">
 <head>
   <meta charset="UTF-8">
-  <title>AR VideoTexture Demo</title>
+  <title>AR Video Demo</title>
   <script src="https://cdn.jsdelivr.net/npm/aframe@1.4.2/dist/aframe.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-aframe.prod.js"></script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-aframe.prod.css" />
@@ -14,44 +14,41 @@
 
 <a-scene mindar-image="imageTargetSrc: travel-target.mind; autoStart: true"
          embedded
-         vr-mode-ui="enabled: false"
-         device-orientation-permission-ui="enabled: true">
+         vr-mode-ui="enabled:false"
+         device-orientation-permission-ui="enabled:true"
+         renderer="precision: medium">
 
   <a-assets>
-    <video id="arVideo" src="Comp.mp4" preload="auto" loop crossorigin="anonymous" playsinline></video>
+    <video id="video1" src="Comp.mp4" preload="auto" loop playsinline crossorigin="anonymous"></video>
   </a-assets>
 
   <!-- Marker -->
-  <a-entity mindar-image-target="targetIndex:0" id="video-marker" position="0 0 0">
-    <!-- 用平面承載 VideoTexture -->
-    <a-plane id="video-plane" position="0 0 0" rotation="-90 0 0" width="1.6" height="0.9" color="#000"></a-plane>
+  <a-entity mindar-image-target="targetIndex:0" id="marker0">
+    <a-plane id="videoPlane" position="0 0 0" rotation="0 0 0" width="1.6" height="0.9" color="#000"></a-plane>
   </a-entity>
 
   <a-camera position="0 0 0" look-controls="enabled:false"></a-camera>
 </a-scene>
 
 <script>
-const videoEl = document.getElementById("arVideo");
-const planeEl = document.getElementById("video-plane");
+const videoEl = document.getElementById("video1");
+const planeEl = document.getElementById("videoPlane");
+const markerEl = document.getElementById("marker0");
 
-// 等 A-Frame 加載完成再掛 VideoTexture
-planeEl.addEventListener('model-loaded', ()=>{}); // 平面不需要 model-loaded，但可保留
-
-// 直接用 Three.js VideoTexture
-const sceneEl = document.querySelector('a-scene');
-sceneEl.addEventListener('loaded', ()=>{
+AFRAME.scenes[0].addEventListener('loaded', () => {
+  // 建立 VideoTexture
   const mesh = planeEl.getObject3D('mesh');
-  if(mesh){
-    const texture = new THREE.VideoTexture(videoEl);
-    mesh.material.map = texture;
-    mesh.material.needsUpdate = true;
-  }
+  const texture = new THREE.VideoTexture(videoEl);
+  texture.minFilter = THREE.LinearFilter;
+  texture.magFilter = THREE.LinearFilter;
+  texture.format = THREE.RGBFormat;
+  mesh.material.map = texture;
+  mesh.material.needsUpdate = true;
 });
 
-// Marker 播放 / 暫停影片
-const markerEl = document.getElementById("video-marker");
-markerEl.addEventListener("targetFound", ()=> videoEl.play());
-markerEl.addEventListener("targetLost", ()=> videoEl.pause());
+// Marker 顯示 / 隱藏控制影片
+markerEl.addEventListener("targetFound", () => { videoEl.play(); });
+markerEl.addEventListener("targetLost", () => { videoEl.pause(); });
 </script>
 
 </body>
