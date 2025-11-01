@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>光影挑戰 | AR 版</title>
+<title></title>
 
 <script src="https://cdn.jsdelivr.net/npm/aframe@1.4.2/dist/aframe.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-aframe.prod.js"></script>
@@ -20,7 +20,7 @@ html, body { margin:0; padding:0; height:100%; background:transparent; overflow:
   position: absolute; top: 10px; width: 100%; z-index: 11; font-size: 20px;
   display:none;
   text-align: center;
-  color: white;
+  
   pointer-events: none;
 }
 #score, #timer { margin: 0 15px; display: inline-block; }
@@ -38,7 +38,7 @@ html, body { margin:0; padding:0; height:100%; background:transparent; overflow:
   <a-camera position="0 0 0"></a-camera>
 
   <!-- marker 0 用嚟觸發遊戲 -->
-  <a-entity mindar-image-target="targetIndex:0" id="game-marker"></a-entity>
+  <a-entity mindar-image-target="targetIndex:5" id="game-marker"></a-entity>
 </a-scene>
 
 <!-- UI -->
@@ -153,3 +153,4 @@ markerEl.addEventListener("targetLost", stopGame);
 
 </body>
 </html>
+
